@@ -1,0 +1,493 @@
+Sub Main_Macro()
+'
+' Main macro which will launch other subroutines
+'
+
+'
+    Step_1
+    Step_2
+    Dim schedule As Collection
+    Dim wb_Sample As Workbook
+    Dim wb_Original As Workbook
+    Dim wb_Original_WorkSheet As Worksheet
+    Dim wb_Original_Assessment_WorkSheet As Worksheet
+    Dim wb_Original_Attendance_WorkSheet As Worksheet
+    Set wb_Original = ActiveWorkbook
+    Set wb_Original_WorkSheet = wb_Original.ActiveSheet
+
+    If (WorkBookExists) Then
+
+        Workbooks("Sample.xlsx").Activate
+        Set wb_Sample = ActiveWorkbook
+        init_Copy_Sample wb_Original, wb_Sample
+        Set wb_Original_Assessment_WorkSheet = wb_Original.Sheets("Assessment_Form")
+        Set schedule = cl(wb_Sample)
+        Enum_Table schedule.count - 1, wb_Original
+        Enum_Label schedule, "A4", 50, "Code", wb_Original, "Assessment_Form"
+        Enum_Label schedule, "H6", 50, "Date", wb_Original, "Assessment_Form"
+        Enum_Label schedule, "A6", 50, "Supervisor", wb_Original, "Assessment_Form"
+        Enum_Label schedule, "H8", 50, "Experiment", wb_Original, "Assessment_Form"
+        Enum_Label schedule, "B10", 50, "Group", wb_Original, "Assessment_Form"
+        Enum_Label schedule, "F4", 50, "Title", wb_Original, "Assessment_Form"
+        Copy_Student_Assess_List schedule, "B12", 50, wb_Original, wb_Original_WorkSheet, wb_Original_Assessment_WorkSheet
+        
+        
+        init_Copy_Attendance wb_Original, wb_Sample
+        Set wb_Original_Attendance_WorkSheet = wb_Original.Sheets("Attendance_Form")
+        Enum_Table_Attendance schedule.count - 1, wb_Original
+        Enum_Label_Attendance schedule, "A4", 38, "Supervisor", wb_Original, "Attendance_Form"
+        Enum_Label_Attendance schedule, "F4", 38, "Experiment", wb_Original, "Attendance_Form"
+        Enum_Label_Attendance schedule, "B7", 38, "Group", wb_Original, "Attendance_Form"
+        Enum_Label_Attendance schedule, "D6", 38, "Date", wb_Original, "Attendance_Form"
+        Copy_Student_Attendance_List schedule, "B9", 38, wb_Original, wb_Original_WorkSheet, wb_Original_Attendance_WorkSheet
+
+    End If
+
+End Sub
+
+Sub Step_1()
+'
+' Step1 subroutine. Delete unwanted columns from raw source table
+'
+
+'
+    Columns("B:B").Select
+    Selection.SpecialCells(xlCellTypeBlanks).Select
+    Selection.EntireRow.Delete
+    Columns("D:E").Select
+    Selection.Delete Shift:=xlToLeft
+    Columns("E:H").Select
+    Selection.Delete Shift:=xlToLeft
+    Range("D6").Select
+End Sub
+Sub Step_2()
+'
+'   Step_2 subroutine. Extract Group ID from Raw Data Table, and paste Group ID to each element
+'   Need to activate regular expression (Microsoft VBScript Regular Expressions 5.5) under Tools -> References
+'
+    
+    Dim strPattern As String: strPattern = "Class Group:"
+    
+    Dim regEx As New RegExp
+    
+    With regEx
+        .Global = True
+        .MultiLine = True
+        .Pattern = strPattern
+    End With
+    
+    Range("B1").Select
+    
+    Do While Selection <> ""
+    If regEx.Test(Selection) Then
+        Dim str As String: str = Mid(Selection, 13, 20)
+        ActiveCell.offset(0, -1).Range("A1").Select
+        Do While (Selection <> 1)
+            ActiveCell.offset(1, 0).Range("A1").Select
+        Loop
+        ActiveCell.offset(0, 4).Range("A1").Select
+        ActiveCell.Value = str
+        ActiveCell.offset(1, 0).Range("A1").Select
+        Do While ActiveCell.offset(0, -1).Value <> ""
+            ActiveCell.Value = str
+            ActiveCell.offset(1, 0).Range("A1").Select
+        Loop
+        ActiveCell.offset(-1, -3).Range("A1").Select
+    End If
+    ActiveCell.offset(1, 0).Range("A1").Select
+    Loop
+    Columns("C:C").Select
+    Selection.Insert Shift:=xlToRight, CopyOrigin:=xlFormatFromLeftOrAbove
+
+End Sub
+Sub Step_3()
+'
+' subroutine for testing purposes, not used in Main_Macro
+'
+    Dim strRange As String
+    Dim count As Integer
+    count = 0
+    Columns("F:F").Select
+    Selection.AutoFilter Field:=1, Criteria1:="LD01"
+    'On Error GoTo msg
+    Range("B2").Select
+    'Selection.SpecialCells(xlCellTypeVisible).Select
+    If Selection.Value <> "" Then
+       
+        count = count + 1
+        ActiveCell.offset(1, 0).Select
+        Do While ActiveCell.Value <> ""
+            count = count + 1
+            ActiveCell.offset(1, 0).Select
+        Loop
+        strRange = "B2:" & "E" & (count + 2)
+        ActiveSheet.Range(strRange).Select
+        Selection.Copy
+
+    End If
+    
+    'ActiveSheet.ShowAllData
+    'Selection.AutoFilter
+    Exit Sub
+msg:
+    MsgBox ("error")
+End Sub
+Sub Copy_Student_Assess_List(ByRef schedule As Collection, ByVal Init_Pos As String, ByVal offset As Integer, ByRef wb_Name As Workbook, ByRef Origin_Sheet As Worksheet, ByRef Assess_Sheet As Worksheet)
+'
+' Copy Student Assessment sample table from Sample.xslx
+'
+    Dim strRange As String
+    Dim count As Integer
+    Dim wb As Workbook
+    Dim wb_Origin As Worksheet
+    Dim wb_Assess As Worksheet
+    Dim Cell_Last_Pos As String
+    Cell_Last_Pos = Init_Pos
+    Set wb = wb_Name
+    Set wb_Origin = Origin_Sheet
+    Set wb_Assess = Assess_Sheet
+    wb.Activate
+    For i = 1 To schedule.count
+    wb_Origin.Activate
+    count = 0
+    Columns("F:F").Select
+    Selection.AutoFilter Field:=1, Criteria1:=schedule(i).Group
+    On Error GoTo msg
+    Range("B2").Select
+    If Selection.Value <> "" Then
+       
+        count = count + 1
+        ActiveCell.offset(1, 0).Select
+        Do While ActiveCell.Value <> ""
+            count = count + 1
+            ActiveCell.offset(1, 0).Select
+        Loop
+        strRange = "B2:" & "E" & (count + 2)
+        ActiveSheet.Range(strRange).Select
+        Selection.Copy
+
+    End If
+    wb_Assess.Activate
+    Range("B" & 12 + (i - 1) * 50).Select
+    ActiveCell.PasteSpecial xlPasteValues
+    Next i
+
+    Exit Sub
+msg:
+    MsgBox ("error: Copy_Student_Assess_List")
+End Sub
+Sub Copy_Student_Attendance_List(ByRef schedule As Collection, ByVal Init_Pos As String, ByVal offset As Integer, ByRef wb_Name As Workbook, ByRef Origin_Sheet As Worksheet, ByRef Assess_Sheet As Worksheet)
+'
+'   Copy Student Attendance sample table from Sample.xslx
+'
+    Dim strRange As String
+    Dim count As Integer
+    Dim wb As Workbook
+    Dim wb_Origin As Worksheet
+    Dim wb_Assess As Worksheet
+    Dim Cell_Last_Pos As String
+    Cell_Last_Pos = Init_Pos
+    Set wb = wb_Name
+    Set wb_Origin = Origin_Sheet
+    Set wb_Assess = Assess_Sheet
+    wb.Activate
+    
+    For i = 1 To schedule.count
+    wb_Origin.Activate
+    count = 0
+    Columns("F:F").Select
+    Selection.AutoFilter Field:=1, Criteria1:=schedule(i).Group
+    On Error GoTo msg
+    Range("B2").Select
+    If Selection.Value <> "" Then
+       
+        count = count + 1
+        ActiveCell.offset(1, 0).Select
+        Do While ActiveCell.Value <> ""
+            count = count + 1
+            ActiveCell.offset(1, 0).Select
+        Loop
+        strRange = "B2:" & "B" & (count + 2)
+        ActiveSheet.Range(strRange).Select
+        Selection.Copy
+
+    End If
+    wb_Assess.Activate
+    Range("B" & 9 + (i - 1) * 38).Select
+    ActiveCell.PasteSpecial xlPasteValues
+    Next i
+    Exit Sub
+msg:
+    MsgBox ("error")
+End Sub
+Sub Enum_Label(ByRef schedule As Collection, ByVal Init_Pos As String, ByVal offset As Integer, ByVal Label As String, ByRef wb_Name As Workbook, ByVal Sheet_Name As String)
+'
+'   Paste labels such as Course Code, Course Title, Experiment, Group, Supervisor's Name, Date on Assessment Form
+'
+    Dim wb As Workbook
+    Dim ob As Schedule_Class
+    Set ob = schedule(1)
+    Set wb = wb_Name
+    wb.Activate
+    wb.Sheets(Sheet_Name).Activate
+    Range(Init_Pos).Select
+    Application.CutCopyMode = False
+
+    
+    For i = 1 To schedule.count
+        Select Case Label
+            Case "Code"
+                ActiveCell.FormulaR1C1 = "Course Code: " & schedule(i).Code
+            Case "Title"
+                ActiveCell.FormulaR1C1 = "Course Title: " & schedule(i).Title
+            Case "Experiment"
+                ActiveCell.FormulaR1C1 = schedule(i).Experiment
+            Case "Group"
+                ActiveCell.FormulaR1C1 = schedule(i).Group
+            Case "Supervisor"
+                ActiveCell.FormulaR1C1 = "Supervisor's Name :  " & schedule(i).Supervisor
+                    With ActiveCell.Characters(Start:=22, Length:=30).Font
+                        .Name = "Calibri"
+                        .FontStyle = "Regular"
+                        .Size = 14
+                        .Strikethrough = False
+                        .Superscript = False
+                        .Subscript = False
+                        .OutlineFont = False
+                        .Shadow = False
+                        .Underline = xlUnderlineStyleSingle
+                        .ColorIndex = 1
+                        .TintAndShade = 0
+                        .ThemeFont = xlThemeFontMinor
+                    End With
+            Case "Date"
+                ActiveCell.FormulaR1C1 = schedule(i).Date_
+        End Select
+        ActiveCell.offset(offset, 0).Range("A1").Select
+    Next i
+End Sub
+Sub Enum_Label_Attendance(ByRef schedule As Collection, ByVal Init_Pos As String, ByVal offset As Integer, ByVal Label As String, ByRef wb_Name As Workbook, ByVal Sheet_Name As String)
+'
+'   Paste labels such as Experiment, Group, Supervisor's Name on Attendance Form
+'
+    Dim wb As Workbook
+    Dim ob As Schedule_Class
+    Set ob = schedule(1)
+    Set wb = wb_Name
+    wb.Activate
+    wb.Sheets(Sheet_Name).Activate
+    Range(Init_Pos).Select
+    Application.CutCopyMode = False
+
+    
+    For i = 1 To schedule.count
+        Select Case Label
+            Case "Experiment"
+                ActiveCell.FormulaR1C1 = "Experiment No: " & schedule(i).Experiment
+                         With ActiveCell.Characters(Start:=16, Length:=30).Font
+                        .Name = "Calibri"
+                        .FontStyle = "Regular"
+                        .Size = 14
+                        .Strikethrough = False
+                        .Superscript = False
+                        .Subscript = False
+                        .OutlineFont = False
+                        .Shadow = False
+                        .Underline = xlUnderlineStyleSingle
+                        .ColorIndex = 1
+                        .TintAndShade = 0
+                        .ThemeFont = xlThemeFontMinor
+                    End With
+            Case "Group"
+                ActiveCell.FormulaR1C1 = "Group: " & schedule(i).Group
+            Case "Supervisor"
+                ActiveCell.FormulaR1C1 = "Supervisor's Name :  " & schedule(i).Supervisor
+                    With ActiveCell.Characters(Start:=22, Length:=30).Font
+                        .Name = "Calibri"
+                        .FontStyle = "Regular"
+                        .Size = 14
+                        .Strikethrough = False
+                        .Superscript = False
+                        .Subscript = False
+                        .OutlineFont = False
+                        .Shadow = False
+                        .Underline = xlUnderlineStyleSingle
+                        .ColorIndex = 1
+                        .TintAndShade = 0
+                        .ThemeFont = xlThemeFontMinor
+                    End With
+            Case "Date"
+                ActiveCell.FormulaR1C1 = schedule(i).Date_
+        End Select
+        ActiveCell.offset(offset, 0).Range("A1").Select
+    Next i
+End Sub
+Sub Enum_Table(ByVal total_schedule As Integer, ByRef wb_Name As Workbook)
+'
+' Paste the names of students onto each table under Assessment Form according to their grouping
+'
+
+'
+    Dim wb As Workbook
+    Set wb = wb_Name
+    wb.Activate
+    wb.Sheets("Assessment_Form").Activate
+    Range("A1:H1").Select
+    ActiveWindow.SmallScroll Down:=18
+    ActiveCell.Range("A1:H50").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    For i = 1 To total_schedule
+    ActiveCell.offset(50, 0).Range("A1:H1").Select
+    ActiveSheet.Paste
+    Next i
+End Sub
+Sub Enum_Table_Attendance(ByVal total_schedule As Integer, ByRef wb_Name As Workbook)
+'
+' Paste the names of students onto each table under Attendance Form according to their grouping
+'
+
+'
+    Dim wb As Workbook
+    Set wb = wb_Name
+    wb.Activate
+    wb.Sheets("Attendance_Form").Activate
+    Range("A1:G38").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    For i = 1 To total_schedule
+    ActiveCell.offset(38, 0).Range("A1:G1").Select
+    ActiveSheet.Paste
+    Next i
+End Sub
+Sub init_Copy_Sample(ByRef Origin As Workbook, ByRef Sample As Workbook)
+'
+' Initiate the copying of a sample Assessement form from Sample.xsls to pasting it to the Excel Raw Data file
+'
+
+'
+    Dim ws As Worksheet
+    Dim name_of_form As String: name_of_form = "Assessment_Form"
+    Sample.Activate
+    Sheets("Assess_Sample").Select
+    Columns("A:H").Select
+    Range("A4").Activate
+    Selection.Copy
+    Origin.Activate
+    Set ws = Origin.Worksheets.Add(After:=Origin.Worksheets(Origin.Worksheets.count), Type:=xlWorksheet)
+    With ws
+        .Name = name_of_form
+    End With
+    Range("A1").Select
+    ActiveSheet.Paste
+End Sub
+Sub init_Copy_Attendance(ByRef Origin As Workbook, ByRef Sample As Workbook)
+'
+' Initiate the copying of a sample Attendance form from Sample.xsls to pasting it to the Excel Raw Data file
+'
+
+'
+    Dim ws As Worksheet
+    Dim name_of_form As String: name_of_form = "Attendance_Form"
+    Sample.Activate
+    Sheets("Attend_Sample").Select
+    Columns("A:G").Select
+    Range("A4").Activate
+    Selection.Copy
+    Origin.Activate
+    Set ws = Origin.Worksheets.Add(After:=Origin.Worksheets(Origin.Worksheets.count), Type:=xlWorksheet)
+    With ws
+        .Name = name_of_form
+    End With
+    Range("A1").Select
+    ActiveSheet.Paste
+
+End Sub
+Function WorkBookExists(Optional ByVal wb_Name As String = "Sample.xlsx") As Boolean
+'
+' Function to test the existance of the Sample.xlsx file
+'
+
+'
+  On Error GoTo err
+  Workbooks.Open (ActiveWorkbook.Path & "/Sample.xlsx")
+  For i = 1 To Workbooks.count
+    'MsgBox (Workbooks(i).Name)
+    If Workbooks(i).Name = wb_Name Then
+    WorkBookExists = True
+    End If
+  Next i
+  Exit Function
+err:
+   WorkBookExists = False
+   Debug.Print ("Sample.xlsx not found")
+End Function
+Function cl(Optional ByRef wb_Name As Workbook = Nothing) As Object
+'
+' Function to extract each line on Sample.xsls under Schedule, and create them as Schedule Class objects.
+' Pack the Schedule Class objects as Collections
+'
+
+'
+Dim wb As Workbook
+Dim a As New Collection
+Dim SC As Schedule_Class
+If Not wb_Name Is Nothing Then
+    Set wb = wb_Name
+    wb.Activate
+    wb.Sheets("Schedule").Activate
+Else
+    Set wb = ActiveWorkbook
+    wb.Activate
+    wb.Sheets("Schedule").Activate
+End If
+    Range("A2").Select
+    Do While Selection <> ""
+       Set SC = New Schedule_Class
+       SC.Code = Selection.Value
+       SC.Title = ActiveCell.offset(0, 1).Value
+       SC.Experiment = ActiveCell.offset(0, 2).Value
+       SC.Group = ActiveCell.offset(0, 3).Value
+       SC.Supervisor = ActiveCell.offset(0, 4).Value
+       SC.Date_ = ActiveCell.offset(0, 5).Value
+       a.Add SC
+       ActiveCell.offset(1, 0).Select
+    Loop
+
+Set cl = a
+
+'Debug.Print (cl.count)
+
+End Function
+Sub testF()
+'
+' subroutine for testing purposes. Not used in Main Macro
+'
+
+'
+Dim a As Collection
+Set a = cl()
+'Debug.Print (a.count)
+For i = 1 To a.count
+   Debug.Print (a(i).Experiment & " " & a(i).Group & " " & a(i).Supervisor & " " & a(i).Date_)
+Next i
+
+End Sub
+Sub addWS(ws_name As String)
+'
+' subroutine for testing purposes. Not used in Main Macro
+'
+
+'
+    ActiveWorkbook.Sheets.Add.Name = ws_name
+End Sub
+Sub addWorksheet(str As String)
+'
+' subroutine for testing purposes. Not used in Main Macro
+'
+
+'
+Dim wb As Workbook
+Set wb = Workbooks.Open("Sample.xlsx")
+wb.Sheets.Add.Name = str
+End Sub
