@@ -9,9 +9,8 @@
 
 ### How do I get set up? ###
 
- * File Sample.xlsx is required
- * Raw data excel page is required
- * Copy and paste contents of file "PERSONAL.XLSB" to Personal.xlsb in Excel
- * Copy and paste contents of file "Schedule_Class.cls" to Schedule_Class.cls in Excel
- * Need to activate regular expression (Microsoft VBScript Regular Expressions 5.5) under Tools -> References
+ * Download RAW_DATA_SHEET.XLSM, and Sample.xlsx
+ * Open RAW_DATA_SHEET.XLSM
+ * Run Macro "Main_Macro"
+ * May need to activate regular expression (Microsoft VBScript Regular Expressions 5.5) under Tools -> References
  
