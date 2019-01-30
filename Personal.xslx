@@ -4,6 +4,7 @@ Sub Main_Macro()
 '
 
 '
+    Step_Pre
     Step_1
     Step_2
     Dim schedule As Collection
@@ -44,7 +45,61 @@ Sub Main_Macro()
     End If
 
 End Sub
+Sub Step_Pre()
+'
+' pre Macro
+'
 
+'
+    Dim nonEmptyFirstString As Boolean
+    Dim count As Integer
+    Dim strPattern As String: strPattern = "^[^N^0-9]"
+    Dim regEx As New RegExp
+    
+    With regEx
+        .Global = True
+        .MultiLine = True
+        .Pattern = strPattern
+    End With
+    nonEmptyFirstString = False
+    Range("A1").Select
+    For count = 1 To 5
+        If ActiveCell.Value <> "" Then
+            nonEmptyFirstString = True
+        End If
+        ActiveCell.offset(0, 1).Range("A1").Select
+    Next count
+    
+    If nonEmptyFirstString = True Then
+        Columns("A:A").Select
+        On Error Resume Next
+        Selection.SpecialCells(xlCellTypeBlanks).Select
+        Selection.EntireRow.Delete
+        Range("A1").Select
+        Do While Selection <> ""
+            If regEx.Test(Selection) Then
+                'MsgBox "true " & Selection.Value
+                Selection.Cut
+                ActiveCell.offset(0, 1).Select
+                ActiveSheet.Paste
+                ActiveCell.offset(0, -1).Select
+            End If
+            ActiveCell.offset(1, 0).Range("A1").Select
+        Loop
+        
+    End If
+
+    
+   ' Range("A1").Select
+   ' Range("A1").Select
+   ' Selection.Cut
+   ' Range("B1").Select
+   ' ActiveSheet.Paste
+   ' Range("A2").Select
+    'Selection.Cut
+    'Range("B2").Select
+    'ActiveSheet.Paste
+End Sub
 Sub Step_1()
 '
 ' Step1 subroutine. Delete unwanted columns from raw source table
@@ -52,6 +107,7 @@ Sub Step_1()
 
 '
     Columns("B:B").Select
+    On Error Resume Next
     Selection.SpecialCells(xlCellTypeBlanks).Select
     Selection.EntireRow.Delete
     Columns("D:E").Select
